@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Bingo Online 🎉</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="emoticon">🎉</div>
+        <h1>¡Bienvenido al Bingo Online! 🎰</h1>
+        <p>Diviértete jugando al bingo con tus amigos y familiares. ¡Genera tus cartones y compite por ganar! 🏆</p>
+        <div class="actions">
+            <a href="{{ url_for('registro') }}" class="btn">Regístrate 🎲</a>
+            <a href="{{ url_for('login') }}" class="btn">Inicia Sesión 🎱</a>
+        </div>
+    </div>
+</body>
+</html>

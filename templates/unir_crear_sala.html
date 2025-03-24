@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Unirse o Crear Sala 🎰</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Unirse o Crear Sala</h1>
+        
+        <!-- Sección para elegir acción -->
+        <div id="opciones">
+            <button onclick="mostrarSeccion('crear')">Crear Nueva Sala</button>
+            <button onclick="mostrarSeccion('unirse')">Unirse a una Sala</button>
+        </div>
+        
+        <!-- Sección para crear una nueva sala -->
+        <div id="crear" style="display: none;">
+            <h2>Crear Sala 🎲</h2>
+            <button onclick="createRoom()">Crear Sala</button>
+            <div id="sala-creada" style="display: none;">
+                <h3>Sala creada con ID: <span id="sala-id"></span></h3>
+                <p>Comparte este ID con tus amigos para que se unan.</p>
+                <button onclick="window.location.href='/dashboard'">Ir a la Sala</button>
+            </div>
+        </div>
+        
+        <!-- Sección para unirse a una sala -->
+        <div id="unirse" style="display: none;">
+            <h2>Unirse a una Sala</h2>
+            <input type="text" id="bingoId" placeholder="ID del Bingo">
+            <button onclick="joinRoom()">Unirse</button>
+            <div id="sala-unida" style="display: none;">
+                <h3>Te has unido a la sala ID: <span id="sala-unida-id"></span></h3>
+                <button onclick="window.location.href='/dashboard'">Ir a la Sala</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='socket.io.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+</body>
+</html>
