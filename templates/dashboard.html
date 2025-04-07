@@ -11,7 +11,7 @@
         <h1>Dashboard</h1>
         <form method="POST">
             <input type="text" id="bingoId" placeholder="ID del Bingo">
-            <a href="{{ url_for('unir_crear_sala') }}">Unirse con amigos o Crear Sala</a>
+            <a href="{{ url_for('multijugador') }}">Unisre o Crear Sala</a>
             <label for="cantidad_cartones">¿Cuántos cartones quieres jugar? 🎴</label>
             <input type="number" id="cantidad_cartones" name="cantidad_cartones" min="1" max="5" required>
             <button type="submit">Generar Cartones 🎉</button>

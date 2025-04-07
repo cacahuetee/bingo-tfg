@@ -1,168 +1,230 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session,jsonify
+import random
+import uuid
+from datetime import timedelta
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import mysql.connector
-from mysql.connector import Error
 from hashlib import sha256
-import random
-import uuid 
-from datetime import timedelta
-from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Clave secreta para manejar sesiones en Flask (¡Cámbiala por una segura!)
+app.secret_key = os.urandom(24)
 app.permanent_session_lifetime = timedelta(days=1)
 socketio = SocketIO(app)
 
 # Configuración de la base de datos
 db_config = {
-    'host': '',     # Dirección IP del servidor de base de datos
-    'user': '',            # Usuario de la base de datos
-    'password': '',      # Contraseña del usuario
-    'database': ''         # Nombre de la base de datos
+    'host': os.getenv('DB_HOST', '192.168.0.46'),
+    'user': os.getenv('DB_USER', 'user_tfg'),
+    'password': os.getenv('DB_PASS', 'Bingo_1234'),
+    'database': os.getenv('DB_NAME', 'bingo_db')
 }
 
-# Función para establecer conexión con la base de datos
+# Función para verificar sesión manualmente (sin @wraps)
+def login_required(func):
+    def wrapped(*args, **kwargs):
+        if 'usuario_id' not in session:
+            flash('Por favor inicia sesión para acceder a esta página', 'error')
+            return redirect(url_for('login'))
+        return func(*args, **kwargs)
+    wrapped.__name__ = func.__name__  # Necesario para evitar errores con Flask
+    return wrapped
+
 def get_db_connection():
     try:
-        connection = mysql.connector.connect(**db_config)
-        print("✅ Conexión exitosa a la base de datos.")
-        return connection  # Devuelve la conexión activa
+        return mysql.connector.connect(**db_config)
     except mysql.connector.Error as err:
         print(f"❌ Error al conectar a la base de datos: {err}")
-        return None  # Devuelve None si hay un error
+        return None
 
-# Función genérica para ejecutar consultas SQL (reduce repetición de código)
 def ejecutar_consulta(query, params=None, fetch_one=False, commit=False):
-    """
-    Ejecuta una consulta SQL y maneja la conexión automáticamente.
-    - query: Consulta SQL a ejecutar.
-    - params: Parámetros para la consulta (tupla o lista).
-    - fetch_one: Si es True, devuelve un solo resultado. Si es False, devuelve todos.
-    - commit: Si es True, se ejecuta un commit (para INSERT, UPDATE, DELETE).
-    """
     connection = get_db_connection()
     if not connection:
         return None
 
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(dictionary=True) as cursor:
             cursor.execute(query, params or ())
             if commit:
-                connection.commit()  # Guarda los cambios en la base de datos
+                connection.commit()
                 return True
-            return cursor.fetchone() if fetch_one else cursor.fetchall()  # Devuelve los resultados de la consulta
+            return cursor.fetchone() if fetch_one else cursor.fetchall()
     except mysql.connector.Error as err:
         print(f"❌ Error en la consulta SQL: {err}")
-        return None  # En caso de error, devuelve None
+        return None
     finally:
-        connection.close()  # Cierra la conexión siempre al final
+        connection.close()
 
-# Función para iniciar sesión
 def iniciar_sesion(username, dni):
-    """
-    Busca un usuario en la base de datos y devuelve su ID y username si las credenciales son correctas.
-    """
-    dni_hash = sha256(dni.encode()).hexdigest()  # Encripta el DNI con SHA-256
+    dni_hash = sha256(dni.encode()).hexdigest()
     query = "SELECT id, username FROM usuarios WHERE username = %s AND dni = %s"
     return ejecutar_consulta(query, (username, dni_hash), fetch_one=True)
 
-# Función para registrar un nuevo usuario
 def registrar_usuario(username, dni, mayor_edad):
-    """
-    Registra un nuevo usuario en la base de datos si el username o DNI no están en uso.
-    """
-    dni_hash = sha256(dni.encode()).hexdigest()  # Encripta el DNI antes de guardarlo
-
-    # Verifica si el usuario ya existe
-    if ejecutar_consulta("SELECT id FROM usuarios WHERE username = %s OR dni = %s", (username, dni_hash), fetch_one=True):
-        print("❌ Error: El usuario o DNI ya está registrado.")
+    dni_hash = sha256(dni.encode()).hexdigest()
+    
+    if ejecutar_consulta(
+        "SELECT id FROM usuarios WHERE username = %s OR dni = %s", 
+        (username, dni_hash), 
+        fetch_one=True
+    ):
         return False
 
-    # Inserta un nuevo usuario
-    query = "INSERT INTO usuarios (username, dni, mayor_edad) VALUES (%s, %s, %s)"
-    if ejecutar_consulta(query, (username, dni_hash, mayor_edad), commit=True):
-        print("✅ Usuario registrado con éxito.")
-        return True
+    return ejecutar_consulta(
+        "INSERT INTO usuarios (username, dni, mayor_edad) VALUES (%s, %s, %s)",
+        (username, dni_hash, mayor_edad),
+        commit=True
+    )
 
-    return False  # Devuelve False si hubo un error en el registro
+def generar_codigo_sala():
+    while True:
+        codigo = uuid.uuid4().hex[:8].upper()
+        if not ejecutar_consulta("SELECT id FROM salas WHERE id = %s", (codigo,), fetch_one=True):
+            return codigo
 
-def generar_codigo_salas():
-
-
-#Ruta de página de inicio (index.html)
+# --- Rutas principales ---
 @app.route('/')
 def index():
+    if 'usuario_id' in session:
+        return redirect(url_for('dashboard'))
     return render_template('index.html')
 
-# Ruta para el registro de usuarios
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
     if request.method == 'POST':
-        # Obtiene los datos del formulario, asegurándose de eliminar espacios en blanco
         username = request.form.get('username', '').strip()
         dni = request.form.get('dni', '').strip()
-        mayor_edad = 'mayor_edad' in request.form  # Devuelve True si la casilla está marcada
+        mayor_edad = 'mayor_edad' in request.form
 
-        # Intenta registrar al usuario
-        if registrar_usuario(username, dni, mayor_edad):
-            flash('✅ Usuario registrado con éxito.', 'success')
-            return redirect(url_for('login'))  # Redirige al login si se registró con éxito
+        if not username or not dni:
+            flash('Todos los campos son obligatorios', 'error')
+        elif not mayor_edad:
+            flash('Debes ser mayor de edad para registrarte.', 'error')
+        elif registrar_usuario(username, dni, mayor_edad):
+            flash('Registro exitoso. Por favor inicia sesión.', 'success')
+            return redirect(url_for('login'))
+        else:
+            flash('El usuario o DNI ya están registrados', 'error')
 
-        flash('❌ Error: El usuario ya existe o hubo un problema en el registro.', 'error')
+    return render_template('registro.html')
 
-    return render_template('registro.html')  # Muestra el formulario de registro
-
-# Ruta para el inicio de sesión
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # Obtiene los datos del formulario
         username = request.form.get('username', '').strip()
         dni = request.form.get('dni', '').strip()
 
-        # Intenta iniciar sesión
         usuario = iniciar_sesion(username, dni)
         if usuario:
-            # Guarda la información del usuario en la sesión
-            session['usuario_id'], session['usuario_nombre'] = usuario
-            flash(f'✅ Bienvenido, {usuario[1]}!', 'success')
-            return redirect(url_for('dashboard'))  # Redirige al dashboard
+            session.permanent = True
+            session['usuario_id'] = usuario['id']
+            session['usuario_nombre'] = usuario['username']
+            flash(f'Bienvenido, {usuario["username"]}!', 'success')
+            return redirect(url_for('dashboard'))
+        
+        flash('Usuario o DNI incorrectos', 'error')
 
-        flash('❌ Error: Usuario o contraseña incorrectos.', 'error')
+    return render_template('login.html')
 
-    return render_template('login.html')  # Muestra el formulario de login
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Has cerrado sesión correctamente', 'info')
+    return redirect(url_for('index'))
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
-    if 'usuario_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('dashboard.html')
+    stats = ejecutar_consulta(
+        """SELECT 
+            (SELECT COUNT(*) FROM salas WHERE creador_id = %s) AS salas_creadas,
+            (SELECT COUNT(*) FROM jugadores_sala WHERE usuario_id = %s) AS salas_participadas""",
+        (session['usuario_id'], session['usuario_id']),
+        fetch_one=True
+    )
+    return render_template('dashboard.html', stats=stats)
 
-# Ruta para crear una sala
+@app.route('/multijugador')
+@login_required
+def multijugador():
+    return render_template('multijugador.html')
+
 @app.route('/crear_sala')
+@login_required
 def crear_sala():
-    sala_id = str(uuid.uuid4())[:8]  # Genera un ID único corto
-    return {'sala_id': sala_id}
+    codigo = generar_codigo_sala()
+    
+    if ejecutar_consulta(
+        "INSERT INTO salas (id, creador_id) VALUES (%s, %s)",
+        (codigo, session['usuario_id']),
+        commit=True
+    ):
+        ejecutar_consulta(
+            "INSERT INTO jugadores_sala (sala_id, usuario_id) VALUES (%s, %s)",
+            (codigo, session['usuario_id']),
+            commit=True
+        )
+        
+        return jsonify({
+            'success': True,
+            'sala_id': codigo,
+            'message': 'Sala creada exitosamente'
+        })
+    
+    return jsonify({
+        'success': False,
+        'message': 'Error al crear la sala'
+    }), 500
 
-# Ruta para unirse o crear sala
-@app.route('/unir_crear_sala')
-def unir_crear_sala():
-    return render_template('unir_crear_sala.html')
-
-
-# Eventos de Socket.IO
+# --- Socket.IO ---
 @socketio.on('unirse_bingo')
-def unirse_bingo(data):
+def manejar_unirse_bingo(data):
+    if 'usuario_id' not in session:
+        return
+    
     sala = data['sala']
     join_room(sala)
-    emit('jugador_unido', {'mensaje': f"{session['usuario_nombre']} se ha unido a la sala {sala}"}, room=sala)
+    emit('jugador_unido', {
+        'usuario': session['usuario_nombre'],
+        'mensaje': f"{session['usuario_nombre']} se ha unido a la sala"
+    }, room=sala)
 
 @socketio.on('generar_numero')
-def generar_numero(data):
+def manejar_generar_numero(data):
     sala = data['sala']
-    numero = random.randint(1, 99)
-    emit('nuevo_numero', {'numero': numero}, room=sala)
+    
+    es_creador = ejecutar_consulta(
+        "SELECT 1 FROM salas WHERE id = %s AND creador_id = %s",
+        (sala, session['usuario_id']),
+        fetch_one=True
+    )
+    
+    if not es_creador:
+        return
+    
+    numeros_llamados = ejecutar_consulta(
+        "SELECT numero FROM numeros_llamados WHERE sala_id = %s",
+        (sala,)
+    )
+    
+    numeros_disponibles = [n for n in range(1, 100) if n not in [num['numero'] for num in numeros_llamados]]
+    
+    if not numeros_disponibles:
+        emit('juego_terminado', {'mensaje': 'Todos los números han sido llamados'}, room=sala)
+        return
+    
+    nuevo_numero = random.choice(numeros_disponibles)
+    
+    if ejecutar_consulta(
+        "INSERT INTO numeros_llamados (sala_id, numero) VALUES (%s, %s)",
+        (sala, nuevo_numero),
+        commit=True
+    ):
+        emit('nuevo_numero', {
+            'numero': nuevo_numero,
+            'llamado_por': session['usuario_nombre']
+        }, room=sala)
 
+# --- Main ---
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, host='0.0.0.0')
