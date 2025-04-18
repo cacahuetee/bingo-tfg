@@ -10,45 +10,63 @@
     <div class="container">
         <div class="emoticon">🎰</div>
         <h1>Dashboard</h1>
-        
+
         <div class="dashboard-content">
-            <!-- Formulario principal -->
-            <form method="POST" class="bingo-form">
+            <!-- Formulario para generar cartones -->
+            <div class="bingo-form">
                 <div class="form-group">
-                    <label for="cantidad_cartones">¿Cuántos cartones quieres jugar? 🎴</label>
+                    <label for="inputNumCartones">¿Cuántos cartones quieres jugar? 🎴</label>
                     <div class="quantity-control">
                         <button type="button" class="quantity-btn minus">-</button>
-                        <input type="number" id="cantidad_cartones" name="cantidad_cartones" 
-                               value="1" min="1" max="5" required class="quantity-input">
+                        <input type="number" id="inputNumCartones" value="1" min="1" max="5" required class="quantity-input">
                         <button type="button" class="quantity-btn plus">+</button>
                     </div>
                 </div>
-                <button type="submit" class="generate-btn">Generar Cartones 🎉</button>
-            </form>
-            
-            <!-- Sección de acciones -->
+                <button id="btnGenerarCartones" class="generate-btn">Generar Cartones 🎉</button>
+            </div>
+
+            <!-- Sección para mostrar cartones -->
+            <div id="contenedorCartones" class="cartones-container"></div>
+
+            <!-- Unirse o crear sala -->
+            <div class="sala-section">
+                <h3>Jugar en línea 🎮</h3>
+                <div class="sala-actions">
+                    <button id="btnCrearSala">Crear Sala 🏗️</button>
+                    <input type="text" id="inputSalaId" placeholder="Código de sala">
+                    <button id="btnUnirseSala">Unirse a Sala 🔗</button>
+                </div>
+                <div class="sala-id-info">
+                    Sala actual: <span id="salaId">-</span>
+                </div>
+            </div>
+
+            <!-- Acciones extra -->
             <div class="action-buttons">
-                <a href="{{ url_for('multijugador') }}" class="multiplayer-btn">Unirse o Crear Sala</a>
                 <a href="{{ url_for('partidas', usuario_id=usuario_id) }}" class="games-btn">Ver mis partidas 🏆</a>
             </div>
         </div>
     </div>
 
-    <script>
-    // Controlador de cantidad de cartones (manteniendo funcionalidad original)
-    document.querySelector('.minus').addEventListener('click', function() {
-        const input = document.getElementById('cantidad_cartones');
-        if (parseInt(input.value) > 1) {
-            input.value = parseInt(input.value) - 1;
-        }
-    });
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 
-    document.querySelector('.plus').addEventListener('click', function() {
-        const input = document.getElementById('cantidad_cartones');
-        if (parseInt(input.value) < 5) {
-            input.value = parseInt(input.value) + 1;
-        }
-    });
+    <!-- Controladores de cantidad -->
+    <script>
+        document.querySelector('.minus').addEventListener('click', function () {
+            const input = document.getElementById('inputNumCartones');
+            if (parseInt(input.value) > 1) {
+                input.value = parseInt(input.value) - 1;
+            }
+        });
+
+        document.querySelector('.plus').addEventListener('click', function () {
+            const input = document.getElementById('inputNumCartones');
+            if (parseInt(input.value) < 5) {
+                input.value = parseInt(input.value) + 1;
+            }
+        });
     </script>
 </body>
 </html>
