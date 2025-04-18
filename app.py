@@ -144,12 +144,22 @@ def dashboard():
         (session['usuario_id'], session['usuario_id']),
         fetch_one=True
     )
-    return render_template('dashboard.html', stats=stats)
+    # Asegúrate de pasar usuario_id a la plantilla
+    return render_template('dashboard.html', stats=stats, usuario_id=session['usuario_id'])
+
 
 @app.route('/multijugador')
 @login_required
 def multijugador():
     return render_template('multijugador.html')
+
+@app.route('/partidas/<int:usuario_id>')
+@login_required
+def partidas(usuario_id):
+    # Aquí pondrías la lógica para mostrar las partidas del usuario
+    # Por ahora, solo un ejemplo:
+    return render_template('partidas.html', usuario_id=usuario_id)
+
 
 @app.route('/crear_sala')
 @login_required
