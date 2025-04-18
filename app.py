@@ -4,37 +4,31 @@ import uuid
 from datetime import timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
-import mysql.connector
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from hashlib import sha256
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 app.permanent_session_lifetime = timedelta(days=1)
 socketio = SocketIO(app)
 
-# Configuración de la base de datos
-db_config = {
-    'host': os.getenv('DB_HOST', '192.168.0.46'),
-    'user': os.getenv('DB_USER', 'user_tfg'),
-    'password': os.getenv('DB_PASS', 'Bingo_1234'),
-    'database': os.getenv('DB_NAME', 'bingo_db')
-}
-
-# Función para verificar sesión manualmente (sin @wraps)
-def login_required(func):
-    def wrapped(*args, **kwargs):
-        if 'usuario_id' not in session:
-            flash('Por favor inicia sesión para acceder a esta página', 'error')
-            return redirect(url_for('login'))
-        return func(*args, **kwargs)
-    wrapped.__name__ = func.__name__  # Necesario para evitar errores con Flask
-    return wrapped
-
+# Configuración de la base de datos desde DATABASE_URL (formato de Render)
 def get_db_connection():
     try:
-        return mysql.connector.connect(**db_config)
-    except mysql.connector.Error as err:
-        print(f"❌ Error al conectar a la base de datos: {err}")
+        result = urlparse(os.getenv("DATABASE_URL"))
+        conn = psycopg2.connect(
+            dbname=result.path[1:],
+            user=result.username,
+            password=result.password,
+            host=result.hostname,
+            port=result.port,
+            cursor_factory=RealDictCursor
+        )
+        return conn
+    except Exception as e:
+        print(f"❌ Error al conectar a PostgreSQL: {e}")
         return None
 
 def ejecutar_consulta(query, params=None, fetch_one=False, commit=False):
@@ -43,17 +37,27 @@ def ejecutar_consulta(query, params=None, fetch_one=False, commit=False):
         return None
 
     try:
-        with connection.cursor(dictionary=True) as cursor:
+        with connection.cursor() as cursor:
             cursor.execute(query, params or ())
             if commit:
                 connection.commit()
                 return True
             return cursor.fetchone() if fetch_one else cursor.fetchall()
-    except mysql.connector.Error as err:
+    except Exception as err:
         print(f"❌ Error en la consulta SQL: {err}")
         return None
     finally:
         connection.close()
+
+# Lógica de sesión y usuarios
+def login_required(func):
+    def wrapped(*args, **kwargs):
+        if 'usuario_id' not in session:
+            flash('Por favor inicia sesión para acceder a esta página', 'error')
+            return redirect(url_for('login'))
+        return func(*args, **kwargs)
+    wrapped.__name__ = func.__name__
+    return wrapped
 
 def iniciar_sesion(username, dni):
     dni_hash = sha256(dni.encode()).hexdigest()
@@ -62,14 +66,12 @@ def iniciar_sesion(username, dni):
 
 def registrar_usuario(username, dni, mayor_edad):
     dni_hash = sha256(dni.encode()).hexdigest()
-    
     if ejecutar_consulta(
-        "SELECT id FROM usuarios WHERE username = %s OR dni = %s", 
-        (username, dni_hash), 
+        "SELECT id FROM usuarios WHERE username = %s OR dni = %s",
+        (username, dni_hash),
         fetch_one=True
     ):
         return False
-
     return ejecutar_consulta(
         "INSERT INTO usuarios (username, dni, mayor_edad) VALUES (%s, %s, %s)",
         (username, dni_hash, mayor_edad),
@@ -82,7 +84,7 @@ def generar_codigo_sala():
         if not ejecutar_consulta("SELECT id FROM salas WHERE id = %s", (codigo,), fetch_one=True):
             return codigo
 
-# --- Rutas principales ---
+# Rutas Flask
 @app.route('/')
 def index():
     if 'usuario_id' in session:
@@ -176,7 +178,7 @@ def crear_sala():
         'message': 'Error al crear la sala'
     }), 500
 
-# --- Socket.IO ---
+# Socket.IO
 @socketio.on('unirse_bingo')
 def manejar_unirse_bingo(data):
     if 'usuario_id' not in session:
@@ -225,6 +227,6 @@ def manejar_generar_numero(data):
             'llamado_por': session['usuario_nombre']
         }, room=sala)
 
-# --- Main ---
+# Ejecutar la app (Render friendly)
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0')
+    socketio.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
