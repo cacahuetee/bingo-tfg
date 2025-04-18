@@ -215,6 +215,28 @@ def crear_sala():
         'message': 'Error al crear la sala'
     }), 500
 
+@app.route('/partidas/<int:usuario_id>')
+@login_required
+def partidas(usuario_id):
+    # Verifica que el usuario solo pueda ver sus propias partidas
+    if usuario_id != session['usuario_id']:
+        flash('No tienes permiso para ver estas partidas', 'error')
+        return redirect(url_for('dashboard'))
+    
+    # Consulta las partidas del usuario
+    partidas_usuario = ejecutar_consulta(
+        """SELECT p.id, p.fecha_inicio, p.fecha_fin, p.estado, 
+           (SELECT username FROM usuarios WHERE id = p.ganador_id) as ganador
+           FROM partidas p
+           JOIN jugadores_sala js ON js.sala_id = p.sala_id
+           WHERE js.usuario_id = %s
+           ORDER BY p.fecha_inicio DESC""",
+        (usuario_id,)
+    )
+    
+    return render_template('partidas.html', partidas=partidas_usuario, usuario_id=usuario_id)
+
+
 # Socket.IO
 @socketio.on('unirse_bingo')
 def manejar_unirse_bingo(data):

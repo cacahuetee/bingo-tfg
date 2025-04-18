@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mis Partidas 🏆</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Mis Partidas 🏆</h1>
+        
+        {% if partidas %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha Inicio</th>
+                        <th>Fecha Fin</th>
+                        <th>Estado</th>
+                        <th>Ganador</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for partida in partidas %}
+                    <tr>
+                        <td>{{ partida.id }}</td>
+                        <td>{{ partida.fecha_inicio }}</td>
+                        <td>{{ partida.fecha_fin or 'En curso' }}</td>
+                        <td>{{ partida.estado }}</td>
+                        <td>{{ partida.ganador or 'No hay ganador aún' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No has participado en ninguna partida todavía.</p>
+        {% endif %}
+        
+        <a href="{{ url_for('dashboard') }}">Volver al Dashboard</a>
+    </div>
+</body>
+</html>
