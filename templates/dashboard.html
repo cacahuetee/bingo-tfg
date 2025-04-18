@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard 🎰</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
@@ -9,16 +10,45 @@
     <div class="container">
         <div class="emoticon">🎰</div>
         <h1>Dashboard</h1>
-        <form method="POST">
-            <input type="text" id="bingoId" placeholder="ID del Bingo">
-            <a href="{{ url_for('multijugador') }}">Unisre o Crear Sala</a>
-            <label for="cantidad_cartones">¿Cuántos cartones quieres jugar? 🎴</label>
-            <input type="number" id="cantidad_cartones" name="cantidad_cartones" min="1" max="5" required>
-            <button type="submit">Generar Cartones 🎉</button>
-        </form>     
-        <a href="{{ url_for('partidas', usuario_id=usuario_id) }}">Ver mis partidas 🏆</a>
+        
+        <div class="dashboard-content">
+            <!-- Formulario principal -->
+            <form method="POST" class="bingo-form">
+                <div class="form-group">
+                    <label for="cantidad_cartones">¿Cuántos cartones quieres jugar? 🎴</label>
+                    <div class="quantity-control">
+                        <button type="button" class="quantity-btn minus">-</button>
+                        <input type="number" id="cantidad_cartones" name="cantidad_cartones" 
+                               value="1" min="1" max="5" required class="quantity-input">
+                        <button type="button" class="quantity-btn plus">+</button>
+                    </div>
+                </div>
+                <button type="submit" class="generate-btn">Generar Cartones 🎉</button>
+            </form>
+            
+            <!-- Sección de acciones -->
+            <div class="action-buttons">
+                <a href="{{ url_for('multijugador') }}" class="multiplayer-btn">Unirse o Crear Sala</a>
+                <a href="{{ url_for('partidas', usuario_id=usuario_id) }}" class="games-btn">Ver mis partidas 🏆</a>
+            </div>
+        </div>
     </div>
-    <script src="{{ url_for('static', filename='socket.io.js') }}"></script>
-    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+
+    <script>
+    // Controlador de cantidad de cartones (manteniendo funcionalidad original)
+    document.querySelector('.minus').addEventListener('click', function() {
+        const input = document.getElementById('cantidad_cartones');
+        if (parseInt(input.value) > 1) {
+            input.value = parseInt(input.value) - 1;
+        }
+    });
+
+    document.querySelector('.plus').addEventListener('click', function() {
+        const input = document.getElementById('cantidad_cartones');
+        if (parseInt(input.value) < 5) {
+            input.value = parseInt(input.value) + 1;
+        }
+    });
+    </script>
 </body>
 </html>
