@@ -79,10 +79,43 @@ def registrar_usuario(username, dni, mayor_edad):
     )
 
 def generar_codigo_sala():
-    while True:
-        codigo = uuid.uuid4().hex[:8].upper()
-        if not ejecutar_consulta("SELECT id FROM salas WHERE id = %s", (codigo,), fetch_one=True):
-            return codigo
+    """Genera un ID único de 8 caracteres para la sala."""
+    return uuid.uuid4().hex[:8].upper()
+
+def generar_carton_bingo():
+    """
+    Genera un cartón de bingo de 5x5 con 13 huecos en blanco.
+    Cada columna tiene el rango de números especificado.
+    La primera fila es la palabra BINGO.
+    """
+    # Rango de cada columna
+    rangos = [
+        list(range(1, 20)),    # B
+        list(range(20, 40)),   # I
+        list(range(40, 60)),   # N
+        list(range(60, 80)),   # G
+        list(range(80, 100)),  # O
+    ]
+    # Crear las 5 columnas, cada una con 5 números únicos
+    columnas = [random.sample(rango, 5) for rango in rangos]
+    # Construir la matriz 5x5 (sin encabezado)
+    matriz = [[columnas[col][fila] for col in range(5)] for fila in range(5)]
+
+    # Seleccionar 13 posiciones únicas para dejar en blanco
+    posiciones = [(f, c) for f in range(5) for c in range(5)]
+    huecos_blancos = random.sample(posiciones, 13)
+    for f, c in huecos_blancos:
+        matriz[f][c] = ""
+
+    # Agregar encabezado BINGO
+    carton = [['B', 'I', 'N', 'G', 'O']]
+    carton.extend(matriz)
+    return carton
+
+def generar_cartones_usuario(num_cartones):
+    if not 1 <= num_cartones <= 5:
+        raise ValueError("Solo puedes generar entre 1 y 5 cartones.")
+    return [generar_carton_bingo() for _ in range(num_cartones)]
 
 # Rutas Flask
 @app.route('/')
@@ -134,9 +167,16 @@ def logout():
     flash('Has cerrado sesión correctamente', 'info')
     return redirect(url_for('index'))
 
-@app.route('/dashboard')
+@app.route('/dashboard', methods=['GET', 'POST'])
 @login_required
 def dashboard():
+    cartones = None
+    if request.method == 'POST':
+        try:
+            cantidad_cartones = int(request.form.get('cantidad_cartones', 1))
+            cartones = generar_cartones_usuario(cantidad_cartones)
+        except Exception as e:
+            flash(str(e), 'error')
     stats = ejecutar_consulta(
         """SELECT 
             (SELECT COUNT(*) FROM salas WHERE creador_id = %s) AS salas_creadas,
@@ -144,28 +184,17 @@ def dashboard():
         (session['usuario_id'], session['usuario_id']),
         fetch_one=True
     )
-    # Asegúrate de pasar usuario_id a la plantilla
-    return render_template('dashboard.html', stats=stats, usuario_id=session['usuario_id'])
-
+    return render_template('dashboard.html', stats=stats, usuario_id=session['usuario_id'], cartones=cartones)
 
 @app.route('/multijugador')
 @login_required
 def multijugador():
     return render_template('multijugador.html')
 
-@app.route('/partidas/<int:usuario_id>')
-@login_required
-def partidas(usuario_id):
-    # Aquí pondrías la lógica para mostrar las partidas del usuario
-    # Por ahora, solo un ejemplo:
-    return render_template('partidas.html', usuario_id=usuario_id)
-
-
 @app.route('/crear_sala')
 @login_required
 def crear_sala():
     codigo = generar_codigo_sala()
-    
     if ejecutar_consulta(
         "INSERT INTO salas (id, creador_id) VALUES (%s, %s)",
         (codigo, session['usuario_id']),
@@ -176,13 +205,11 @@ def crear_sala():
             (codigo, session['usuario_id']),
             commit=True
         )
-        
         return jsonify({
             'success': True,
             'sala_id': codigo,
             'message': 'Sala creada exitosamente'
         })
-    
     return jsonify({
         'success': False,
         'message': 'Error al crear la sala'
@@ -193,7 +220,6 @@ def crear_sala():
 def manejar_unirse_bingo(data):
     if 'usuario_id' not in session:
         return
-    
     sala = data['sala']
     join_room(sala)
     emit('jugador_unido', {
@@ -204,29 +230,22 @@ def manejar_unirse_bingo(data):
 @socketio.on('generar_numero')
 def manejar_generar_numero(data):
     sala = data['sala']
-    
     es_creador = ejecutar_consulta(
         "SELECT 1 FROM salas WHERE id = %s AND creador_id = %s",
         (sala, session['usuario_id']),
         fetch_one=True
     )
-    
     if not es_creador:
         return
-    
     numeros_llamados = ejecutar_consulta(
         "SELECT numero FROM numeros_llamados WHERE sala_id = %s",
         (sala,)
     )
-    
     numeros_disponibles = [n for n in range(1, 100) if n not in [num['numero'] for num in numeros_llamados]]
-    
     if not numeros_disponibles:
         emit('juego_terminado', {'mensaje': 'Todos los números han sido llamados'}, room=sala)
         return
-    
     nuevo_numero = random.choice(numeros_disponibles)
-    
     if ejecutar_consulta(
         "INSERT INTO numeros_llamados (sala_id, numero) VALUES (%s, %s)",
         (sala, nuevo_numero),
@@ -240,4 +259,3 @@ def manejar_generar_numero(data):
 # Ejecutar la app (Render friendly)
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
-
