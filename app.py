@@ -13,6 +13,7 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 app.permanent_session_lifetime = timedelta(days=1)
 socketio = SocketIO(app)
+numeros_generados = set()  # Para almacenar números generados en el juego
 
 # Configuración de la base de datos desde DATABASE_URL (formato de Render)
 def get_db_connection():
@@ -191,6 +192,7 @@ def dashboard():
         try:
             cantidad_cartones = int(request.form.get('cantidad_cartones', 1))
             cartones = generar_cartones(cantidad_cartones)
+            return render_template('cartones.html', cartones=cartones)
         except Exception as e:
             flash(str(e), 'error')
     stats = ejecutar_consulta(
@@ -252,6 +254,13 @@ def partidas(usuario_id):
     
     return render_template('partidas.html', partidas=partidas_usuario, usuario_id=usuario_id)
 
+@socketio.on('generar_numero')
+def generar_numero():
+    numero = random.randint(1, 99)
+    while numero in numeros_generados:
+        numero = random.randint(1, 99)
+    numeros_generados.add(numero)
+    emit('nuevo_numero', {'numero': numero}, broadcast=True)
 
 # Socket.IO
 @socketio.on('unirse_bingo')

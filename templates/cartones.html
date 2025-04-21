@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartones de Bingo</title>
+</head>
+<body>
+    <h1>BINGO</h1>
+
+    <div id="numero-central"></div> <!-- Aquí se mostrará el número aleatorio generado -->
+
+    <!-- Cartones de Bingo -->
+    <div id="cartones">
+        {% for carton in cartones %}
+        <div class="carton">
+            <table>
+                <thead>
+                    <tr>
+                        <th>B</th>
+                        <th>I</th>
+                        <th>N</th>
+                        <th>G</th>
+                        <th>O</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i, fila in enumerate(carton) %}
+                    <tr>
+                        {% for j, num in enumerate(fila) %}
+                        <td class="numero {% if num is none %}coloreado{% endif %}">
+                            {{ num if num is not none else '' }}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Botones para comenzar el juego y para BINGO -->
+    <button id="comenzar-juego" class="btn">Comenzar Juego</button>
+    <button id="bingo-btn" class="btn">BINGO</button>
+
+    <!-- Conexión con socket.io -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();  // Conexión al servidor de socket.io
+
+        // Elementos de la interfaz
+        const numeroCentral = document.getElementById('numero-central');
+        const comenzarJuegoBtn = document.getElementById('comenzar-juego');
+        const bingoBtn = document.getElementById('bingo-btn');
+
+        let intervalId = null; // ID del intervalo para detenerlo si el usuario pulsa BINGO
+
+        // Función que marca el número en los cartones
+        function marcarNumeroEnCartones(numero) {
+            const cartones = document.querySelectorAll('.carton');
+            cartones.forEach(carton => {
+                const numeros = carton.querySelectorAll('.numero');
+                numeros.forEach(num => {
+                    if (num.textContent == numero) {
+                        num.classList.add('coloreado');
+                    }
+                });
+            });
+        }
+
+        // Escuchar el evento de socket.io para recibir el número generado
+        socket.on('nuevo_numero', function(data) {
+            const numero = data.numero;
+            numeroCentral.textContent = numero; // Mostrar el número en el centro de la pantalla
+
+            // Marcar el número en los cartones
+            setTimeout(() => {
+                numeroCentral.style.color = 'red'; // Colorear el número en rojo
+                marcarNumeroEnCartones(numero);
+            }, 1000);
+        });
+
+        // Evento al hacer clic en el botón para comenzar el juego
+        comenzarJuegoBtn.addEventListener('click', function() {
+            bingoBtn.style.display = 'inline-block'; // Mostrar el botón de BINGO
+            comenzarJuegoBtn.disabled = true; // Desactivar el botón de comenzar juego
+
+            // Comenzar a generar números cada 2 segundos
+            intervalId = setInterval(() => {
+                socket.emit('generar_numero');  // Emitir el evento para generar un número aleatorio
+            }, 2000);
+        });
+
+        // Evento al hacer clic en el botón BINGO
+        bingoBtn.addEventListener('click', function() {
+            clearInterval(intervalId);  // Detener la generación de números
+            alert("¡Has llamado BINGO!");  // Mensaje al usuario
+            bingoBtn.disabled = true; // Desactivar el botón de BINGO
+        });
+    </script>
+</body>
+</html>
