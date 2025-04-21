@@ -183,7 +183,7 @@ def logout():
     session.clear()
     flash('Has cerrado sesión correctamente', 'info')
     return redirect(url_for('index'))
-
+#--------------------------------------------------------------#
 @app.route('/dashboard', methods=['GET', 'POST'])
 @login_required
 def dashboard():
@@ -204,6 +204,21 @@ def dashboard():
     )
     return render_template('dashboard.html', stats=stats, usuario_id=session['usuario_id'], cartones=cartones)
 
+
+@app.route('/dashboard', methods=['GET', 'POST'])
+def dashboard():
+    if request.method == 'POST':
+        cantidad = int(request.form.get('cantidad_cartones', 1))
+        session['cantidad_cartones'] = cantidad
+        return redirect(url_for('ver_cartones'))
+    return render_template('dashboard.html')
+
+@app.route('/cartones')
+def ver_cartones():
+    cantidad = session.get('cantidad_cartones', 1)
+    cartones = generar_cartones(cantidad)
+    return render_template('cartones.html', cartones=cartones)
+#--------------------------------------------------------------#
 @app.route('/multijugador')
 @login_required
 def multijugador():
