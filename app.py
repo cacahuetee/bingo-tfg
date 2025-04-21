@@ -190,7 +190,7 @@ def dashboard():
     if request.method == 'POST':
         try:
             cantidad_cartones = int(request.form.get('cantidad_cartones', 1))
-            cartones = generar_cartones_usuario(cantidad_cartones)
+            cartones = generar_cartones(cantidad_cartones)
         except Exception as e:
             flash(str(e), 'error')
     stats = ejecutar_consulta(
