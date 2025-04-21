@@ -18,9 +18,9 @@
         <!-- Sección para crear una nueva sala -->
         <div id="crear" style="display: none;">
             <h2>Crear Sala 🎲</h2>
-            <button id="btnCrearSala">Crear Sala</button>
+            <button onclick="createRoom()">Crear Sala</button>
             <div id="sala-creada" style="display: none;">
-                <h3>Sala creada con ID: <span id="salaId"></span></h3>
+                <h3>Sala creada con ID: <span id="sala-id"></span></h3>
                 <p>Comparte este ID con tus amigos para que se unan.</p>
                 <button onclick="window.location.href='/dashboard'">Ir a la Sala</button>
             </div>
@@ -29,8 +29,8 @@
         <!-- Sección para unirse a una sala -->
         <div id="unirse" style="display: none;">
             <h2>Unirse a una Sala</h2>
-            <input type="text" id="inputSalaId" placeholder="ID del Bingo">
-            <button id="btnUnirseSala">Unirse</button>
+            <input type="text" id="bingoId" placeholder="ID del Bingo">
+            <button onclick="joinRoom()">Unirse</button>
             <div id="sala-unida" style="display: none;">
                 <h3>Te has unido a la sala ID: <span id="sala-unida-id"></span></h3>
                 <button onclick="window.location.href='/dashboard'">Ir a la Sala</button>

@@ -7,66 +7,53 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div class="container">
-        <div class="emoticon">🎰</div>
-        <h1>Dashboard</h1>
-
+    <div class="dashboard-container">
+        <header>
+            <h1>Bienvenido, {{ session['usuario_nombre'] }}! 🎰</h1>
+            <a href="{{ url_for('logout') }}" class="logout-btn">Cerrar Sesión</a>
+        </header>
+        
         <div class="dashboard-content">
-            <!-- Formulario para generar cartones -->
-            <div class="bingo-form">
-                <div class="form-group">
-                    <label for="inputNumCartones">¿Cuántos cartones quieres jugar? 🎴</label>
-                    <div class="quantity-control">
-                        <button type="button" class="quantity-btn minus">-</button>
-                        <input type="number" id="inputNumCartones" value="1" min="1" max="5" required class="quantity-input">
-                        <button type="button" class="quantity-btn plus">+</button>
+            <div class="stats-card">
+                <h2>Tus Estadísticas</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ stats.salas_creadas or 0 }}</span>
+                        <span class="stat-label">Salas Creadas</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ stats.salas_participadas or 0 }}</span>
+                        <span class="stat-label">Salas Jugadas</span>
                     </div>
                 </div>
-                <button id="btnGenerarCartones" class="generate-btn">Generar Cartones 🎉</button>
             </div>
-
-            <!-- Sección para mostrar cartones -->
-            <div id="contenedorCartones" class="cartones-container"></div>
-
-            <!-- Unirse o crear sala -->
-            <div class="sala-section">
-                <h3>Jugar en línea 🎮</h3>
-                <div class="sala-actions">
-                    <button id="btnCrearSala">Crear Sala 🏗️</button>
-                    <input type="text" id="inputSalaId" placeholder="Código de sala">
-                    <button id="btnUnirseSala">Unirse a Sala 🔗</button>
+            
+            <div class="action-cards">
+                <div class="action-card" onclick="window.location.href='{{ url_for('multijugador') }}'">
+                    <h3>Multijugador 👥</h3>
+                    <p>Unirse o crear una sala con amigos</p>
+                    <div class="action-icon">➡️</div>
                 </div>
-                <div class="sala-id-info">
-                    Sala actual: <span id="salaId">-</span>
+                
+                <div class="action-card solo-card">
+                    <h3>Juego Individual 🎮</h3>
+                    <form method="POST" action="{{ url_for('generar_cartones') }}">
+                        <div class="form-group">
+                            <label for="cantidad_cartones">Número de cartones:</label>
+                            <input type="number" id="cantidad_cartones" name="cantidad_cartones" 
+                                   min="1" max="5" value="1" required>
+                        </div>
+                        <button type="submit" class="play-btn">Jugar Ahora 🎉</button>
+                    </form>
                 </div>
             </div>
-
-            <!-- Acciones extra -->
-            <div class="action-buttons">
-                <a href="{{ url_for('partidas', usuario_id=usuario_id) }}" class="games-btn">Ver mis partidas 🏆</a>
-            </div>
+            
+            <a href="{{ url_for('partidas') }}" class="history-link">
+                Ver mi historial de partidas 🏆
+            </a>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-
-    <!-- Controladores de cantidad -->
-    <script>
-        document.querySelector('.minus').addEventListener('click', function () {
-            const input = document.getElementById('inputNumCartones');
-            if (parseInt(input.value) > 1) {
-                input.value = parseInt(input.value) - 1;
-            }
-        });
-
-        document.querySelector('.plus').addEventListener('click', function () {
-            const input = document.getElementById('inputNumCartones');
-            if (parseInt(input.value) < 5) {
-                input.value = parseInt(input.value) + 1;
-            }
-        });
-    </script>
+    <script src="{{ url_for('static', filename='scripts.io.js') }}"></script>
 </body>
 </html>

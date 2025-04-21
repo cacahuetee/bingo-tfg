@@ -82,40 +82,56 @@ def generar_codigo_sala():
     """Genera un ID único de 8 caracteres para la sala."""
     return uuid.uuid4().hex[:8].upper()
 
-def generar_carton_bingo():
-    """
-    Genera un cartón de bingo de 5x5 con 13 huecos en blanco.
-    Cada columna tiene el rango de números especificado.
-    La primera fila es la palabra BINGO.
-    """
-    # Rango de cada columna
-    rangos = [
-        list(range(1, 20)),    # B
-        list(range(20, 40)),   # I
-        list(range(40, 60)),   # N
-        list(range(60, 80)),   # G
-        list(range(80, 100)),  # O
-    ]
-    # Crear las 5 columnas, cada una con 5 números únicos
-    columnas = [random.sample(rango, 5) for rango in rangos]
-    # Construir la matriz 5x5 (sin encabezado)
-    matriz = [[columnas[col][fila] for col in range(5)] for fila in range(5)]
+def generar_cartones(cantidad):
+    cartones = []
+    numeros_usados = set()  # Para almacenar números ya utilizados
 
-    # Seleccionar 13 posiciones únicas para dejar en blanco
-    posiciones = [(f, c) for f in range(5) for c in range(5)]
-    huecos_blancos = random.sample(posiciones, 13)
-    for f, c in huecos_blancos:
-        matriz[f][c] = ""
+    for _ in range(cantidad):
+        carton = []
+        # Definir los rangos para cada columna (B, I, N, G, O)
+        rangos = [
+            list(range(1, 20)),    # B: 1-19
+            list(range(20, 40)),   # I: 20-39
+            list(range(40, 60)),   # N: 40-59
+            list(range(60, 80)),   # G: 60-79
+            list(range(80, 100))   # O: 80-99
+        ]
+        
+        # Usaremos 15 números para cada cartón
+        numeros_carton = []
 
-    # Agregar encabezado BINGO
-    carton = [['B', 'I', 'N', 'G', 'O']]
-    carton.extend(matriz)
-    return carton
+        for rango in rangos:
+            # Seleccionar 3 números únicos por columna para completar el total de 15
+            seleccionados = random.sample(rango, 3)
+            for num in seleccionados:
+                while num in numeros_usados:
+                    num = random.choice(rango)  # Asegurarnos de no repetir números
+                numeros_carton.append(num)
+                numeros_usados.add(num)
 
-def generar_cartones_usuario(num_cartones):
-    if not 1 <= num_cartones <= 5:
-        raise ValueError("Solo puedes generar entre 1 y 5 cartones.")
-    return [generar_carton_bingo() for _ in range(num_cartones)]
+        # Mezclar los 15 números y colocar los 10 restantes como None
+        random.shuffle(numeros_carton)
+
+        # Rellenamos los cartones con 15 números y 10 None
+        carton = []
+        indices_numeros = 0
+
+        for i in range(5):
+            fila = []
+            for j in range(5):
+                if i == 2 and j == 2:  # El centro es el espacio libre
+                    fila.append(None)
+                else:
+                    if indices_numeros < 15:
+                        fila.append(numeros_carton[indices_numeros])
+                        indices_numeros += 1
+                    else:
+                        fila.append(None)
+            carton.append(fila)
+
+        cartones.append(carton)
+
+    return cartones
 
 # Rutas Flask
 @app.route('/')
