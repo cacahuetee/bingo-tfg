@@ -9,31 +9,22 @@
 <body>
     <div class="dashboard-container">
         <header>
-            <h1>Bienvenido, {{ session['usuario_nombre'] }}! 🎰</h1>
+            <h1>Bienvenido! 🎰</h1>
             <a href="{{ url_for('logout') }}" class="logout-btn">Cerrar Sesión</a>
         </header>
         
-        <div class="dashboard-content">
-            <div class="stats-card">
-                <h2>Tus Estadísticas</h2>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <span class="stat-number">{{ stats.salas_creadas or 0 }}</span>
-                        <span class="stat-label">Salas Creadas</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number">{{ stats.salas_participadas or 0 }}</span>
-                        <span class="stat-label">Salas Jugadas</span>
-                    </div>
-                </div>
-            </div>
             
-            <div class="action-cards">
-                <div class="action-card" onclick="window.location.href='{{ url_for('multijugador') }}'">
-                    <h3>Multijugador 👥</h3>
-                    <p>Unirse o crear una sala con amigos</p>
-                    <div class="action-icon">➡️</div>
-                </div>
+        <div class="action-card" id="multijugador-card">
+            <h3>Multijugador 👥</h3>
+            <p>Unirse o crear una sala con amigos</p>
+            <div class="action-icon">➡️</div>
+        </div>
+        
+        <script>
+            document.getElementById('multijugador-card').addEventListener('click', function() {
+                window.location.href = "{{ url_for('multijugador') }}";
+            });
+        </script>
                 
                 <div class="action-card solo-card">
                     <h3>Juego Individual 🎮</h3>
