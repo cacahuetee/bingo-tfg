@@ -1,39 +1,41 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard 🎰</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
+
 <body>
     <div class="dashboard-container">
         <header>
             <h1>Bienvenido! 🎰</h1>
             <a href="{{ url_for('logout') }}" class="logout-btn">Cerrar Sesión</a>
         </header>
-        
+
         <div class="dashboard-content">
             <div class="action-cards">
                 <div class="action-card" id="multijugador-card">
                     <h3>Multijugador 👥</h3>
                     <p>Unirse o crear una sala con amigos</p>
-                    <div class="action-icon">➡️</div>
+                    <div>➡️</div>
                 </div>
-                
+
                 <div class="action-card solo-card">
                     <h3>Juego Individual 🎮</h3>
                     <form method="POST" action="{{ url_for('dashboard') }}">
                         <div class="form-group">
                             <label for="cantidad_cartones">Número de cartones:</label>
-                            <input type="number" id="cantidad_cartones" name="cantidad_cartones" 
-                                   min="1" max="5" value="1" required>
+                            <input type="number" id="cantidad_cartones" name="cantidad_cartones" min="1" max="5"
+                                value="1" required>
                         </div>
                         <button type="submit" class="play-btn">Jugar Ahora 🎉</button>
                     </form>
                 </div>
             </div>
-            
+
             <a href="{{ url_for('partidas', usuario_id=session['usuario_id']) }}" class="history-link">
                 Ver mi historial de partidas 🏆
             </a>
@@ -41,10 +43,15 @@
     </div>
 
     <script>
-        document.getElementById('multijugador-card').addEventListener('click', function() {
+        document.getElementById('multijugador-card').addEventListener('click', function () {
             window.location.href = "{{ url_for('multijugador') }}";
         });
+
+        document.getElementById('play-btn').onclick = function () {
+            window.location.href = 'cartones.html';
+        };
     </script>
     <script src="{{ url_for('static', filename='scripts.io.js') }}"></script>
 </body>
+
 </html>
